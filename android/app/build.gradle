@@ -6,12 +6,13 @@ plugins {
 
 android {
     namespace = 'com.statusvault.app'
-    compileSdk = 35
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = 'com.statusvault.app'
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = '1.0.0'
     }
@@ -27,8 +28,6 @@ android {
 
     buildTypes {
         release {
-            // Debug signing keeps local release APK generation simple.
-            // Configure a real release keystore before publishing to Google Play.
             signingConfig signingConfigs.debug
             minifyEnabled = false
             shrinkResources = false
