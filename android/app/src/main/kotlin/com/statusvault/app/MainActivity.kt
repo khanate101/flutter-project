@@ -23,6 +23,10 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "pickStatusFolder" -> pickFolder(result)
                 "scanStatusFolder" -> result.success(scanFolder())
+                "scanWhatsAppStatus" -> {
+                    val type = call.argument<String>("type") ?: "messenger"
+                    result.success(scanWhatsAppStatus(type))
+                }
                 "saveMedia" -> {
                     val path = call.argument<String>("path")
                     val title = call.argument<String>("title") ?: "StatusVault"
@@ -62,17 +66,109 @@ class MainActivity : FlutterActivity() {
         return output
     }
 
+    private fun scanWhatsAppStatus(type: String): List<Map<String, Any>> {
+        val output = mutableListOf<Map<String, Any>>()
+        val relativeRoots = if (type == "business") {
+            listOf(
+                "Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses",
+                "WhatsApp Business/Media/.Statuses"
+            )
+        } else {
+            listOf(
+                "Android/media/com.whatsapp/WhatsApp/Media/.Statuses",
+                "WhatsApp/Media/.Statuses"
+            )
+        }
+        for (relative in relativeRoots) {
+            val root = File("/storage/emulated/0", relative)
+            if (root.isDirectory) {
+                scanNativeDirectory(root, output)
+                if (output.isNotEmpty()) break
+            }
+        }
+        return output.sortedByDescending { (it["modified"] as Long) }
+    }
+
+    private fun scanNativeDirectory(dir: File, output: MutableList<Map<String, Any>>) {
+        val files = try { dir.listFiles() ?: return } catch (_: SecurityException) { return }
+        for (file in files) {
+            if (file.isDirectory) {
+                scanNativeDirectory(file, output)
+                continue
+            }
+            if (!file.isFile || !file.canRead()) continue
+            val lower = file.name.lowercase()
+            val isVideo = lower.endsWith(".mp4") || lower.endsWith(".3gp") ||
+                lower.endsWith(".webm") || lower.endsWith(".mkv") || lower.endsWith(".mov")
+            val isImage = lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                lower.endsWith(".png") || lower.endsWith(".webp") || lower.endsWith(".gif") ||
+                lower.endsWith(".heic") || lower.endsWith(".heif")
+            if (!isImage && !isVideo) continue
+            try {
+                val outExt = file.extension.lowercase().let { if (it.isBlank()) "" else ".$it" }
+                val cached = File(cacheDir, "statusvault_" + file.absolutePath.hashCode() + outExt)
+                if (!cached.exists() || cached.length() != file.length()) {
+                    FileOutputStream(cached).use { outputStream ->
+                        file.inputStream().use { input -> input.copyTo(outputStream) }
+                    }
+                }
+                output.add(mapOf(
+                    "path" to cached.absolutePath,
+                    "name" to file.name,
+                    "mime" to mimeFor(file),
+                    "isVideo" to isVideo,
+                    "modified" to file.lastModified(),
+                    "size" to file.length()
+                ))
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun mimeFor(file: File): String {
+        return when (file.extension.lowercase()) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            "heic" -> "image/heic"
+            "heif" -> "image/heif"
+            "mp4" -> "video/mp4"
+            "3gp" -> "video/3gpp"
+            "webm" -> "video/webm"
+            "mkv" -> "video/x-matroska"
+            "mov" -> "video/quicktime"
+            else -> "application/octet-stream"
+        }
+    }
+
     private fun scan(dir: DocumentFile, output: MutableList<Map<String, Any>>) {
         for (f in dir.listFiles()) {
             if (f.isDirectory) { scan(f, output); continue }
             val mime = f.type ?: continue
             if (!mime.startsWith("image/") && !mime.startsWith("video/")) continue
             try {
-                val ext = when { mime.contains("jpeg") -> ".jpg"; mime.contains("png") -> ".png"; mime.contains("webp") -> ".webp"; mime.contains("mp4") -> ".mp4"; mime.contains("3gp") -> ".3gp"; else -> "" }
-                val safe = (f.name ?: "status") .replace(Regex("[^A-Za-z0-9._-]"), "_")
-                val out = File(cacheDir, "statusvault_${f.uri.toString().hashCode().toString()}$ext")
-                if (!out.exists() || out.length() == 0L) contentResolver.openInputStream(f.uri)?.use { input -> FileOutputStream(out).use { outputStream -> input.copyTo(outputStream) } }
-                output.add(mapOf("path" to out.absolutePath, "name" to (f.name ?: safe), "mime" to mime, "modified" to f.lastModified()))
+                val ext = when {
+                    mime.contains("jpeg") -> ".jpg"
+                    mime.contains("png") -> ".png"
+                    mime.contains("webp") -> ".webp"
+                    mime.contains("mp4") -> ".mp4"
+                    mime.contains("3gp") -> ".3gp"
+                    else -> ""
+                }
+                val safe = (f.name ?: "status").replace(Regex("[^A-Za-z0-9._-]"), "_")
+                val out = File(cacheDir, "statusvault_" + f.uri.toString().hashCode() + ext)
+                if (!out.exists() || out.length() == 0L) {
+                    contentResolver.openInputStream(f.uri)?.use { input ->
+                        FileOutputStream(out).use { outputStream -> input.copyTo(outputStream) }
+                    }
+                }
+                output.add(mapOf(
+                    "path" to out.absolutePath,
+                    "name" to (f.name ?: safe),
+                    "mime" to mime,
+                    "modified" to f.lastModified(),
+                    "size" to out.length()
+                ))
             } catch (_: Exception) { }
         }
     }
@@ -82,15 +178,17 @@ class MainActivity : FlutterActivity() {
         return try {
             val isVideo = file.extension.lowercase() in setOf("mp4", "3gp", "webm", "mkv", "mov")
             val collection = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            val mime = mimeFor(file)
             val values = android.content.ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, title.ifBlank { file.name })
-                put(MediaStore.MediaColumns.MIME_TYPE, if (isVideo) "video/mp4" else "image/jpeg")
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
                 put(MediaStore.MediaColumns.RELATIVE_PATH, if (isVideo) "Pictures/StatusVault/Videos" else "Pictures/StatusVault/Images")
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
             val uri = contentResolver.insert(collection, values) ?: return false
             contentResolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
-            values.clear(); values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
             contentResolver.update(uri, values, null, null)
             true
         } catch (_: Exception) { false }
