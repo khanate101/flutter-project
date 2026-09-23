@@ -10,6 +10,9 @@ class StatusRepository {
 
   Future<bool> pickWhatsAppStatusFolder() => nativeStorage.pickStatusFolder();
 
+  Future<bool> pickWhatsAppStatusFolder(String type) =>
+      nativeStorage.pickWhatsAppStatusFolder(type);
+
   Future<List<StatusItem>> scanWhatsAppStatus(String type) async {
     await Permission.storage.request();
     await Permission.photos.request();
