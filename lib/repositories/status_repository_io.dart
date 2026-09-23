@@ -8,6 +8,10 @@ import '../models/status_item.dart';
 class StatusRepository {
   final NativeStorageService nativeStorage = NativeStorageService();
 
+  Future<bool> isAllFilesAccessGranted() => nativeStorage.isAllFilesAccessGranted();
+
+  Future<bool> openAllFilesAccessSettings() => nativeStorage.openAllFilesAccessSettings();
+
   Future<bool> pickWhatsAppStatusFolder(String type) =>
       nativeStorage.pickWhatsAppStatusFolder(type);
 
