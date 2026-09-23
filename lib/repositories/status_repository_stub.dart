@@ -4,7 +4,7 @@ import '../core/services/native_storage_service.dart';
 class StatusRepository {
   final NativeStorageService nativeStorage = NativeStorageService();
 
-  Future<bool> pickWhatsAppStatusFolder() => nativeStorage.pickStatusFolder();
+  Future<bool> pickWhatsAppStatusFolder(String type) => nativeStorage.pickWhatsAppStatusFolder(type);
 
   Future<List<StatusItem>> scanWhatsAppStatus(String type) async =>
       _map(await nativeStorage.scanWhatsAppStatus(type));
