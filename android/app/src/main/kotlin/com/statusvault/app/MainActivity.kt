@@ -70,7 +70,7 @@ class MainActivity : FlutterActivity() {
             try {
                 val ext = when { mime.contains("jpeg") -> ".jpg"; mime.contains("png") -> ".png"; mime.contains("webp") -> ".webp"; mime.contains("mp4") -> ".mp4"; mime.contains("3gp") -> ".3gp"; else -> "" }
                 val safe = (f.name ?: "status") .replace(Regex("[^A-Za-z0-9._-]"), "_")
-                val out = File(cacheDir, "statusvault_${f.id ?: safe}$ext")
+                val out = File(cacheDir, "statusvault_${f.uri.toString().hashCode().toString()}$ext")
                 if (!out.exists() || out.length() == 0L) contentResolver.openInputStream(f.uri)?.use { input -> FileOutputStream(out).use { outputStream -> input.copyTo(outputStream) } }
                 output.add(mapOf("path" to out.absolutePath, "name" to (f.name ?: safe), "mime" to mime, "modified" to f.lastModified()))
             } catch (_: Exception) { }
