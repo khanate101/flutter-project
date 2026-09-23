@@ -18,7 +18,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int mediaTab = 2;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final source = sourceTab == 0 ? 'messenger' : 'business';
     final data = ref.watch(whatsappStatusProvider(source));
 
@@ -405,7 +405,7 @@ class StatusCard extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   const _EmptyState({required this.sourceTab, required this.isWeb});
 
   final int sourceTab;
@@ -435,9 +435,30 @@ class _EmptyState extends StatelessWidget {
               isWeb
                   ? 'الإصدار الويب لا يستطيع الوصول إلى مجلدات واتساب الخاصة في الهاتف.'
                   : 'لم يتم العثور على حالات في مجلد ' + name +
-                      '. تأكد من وجود حالات حديثة ومنح التطبيق صلاحية الصور والفيديو.',
+                      '. في إصدارات Android الحديثة قد يمنع النظام الوصول المباشر إلى مجلد .Statuses.',
               textAlign: TextAlign.center,
             ),
+            if (!isWeb) ...[
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: () async {
+                  final type = sourceTab == 0 ? 'messenger' : 'business';
+                  final ok = await ref
+                      .read(statusRepositoryProvider)
+                      .pickWhatsAppStatusFolder(type);
+                  if (ok) {
+                    ref.invalidate(whatsappStatusProvider(type));
+                  }
+                },
+                icon: const Icon(Icons.folder_open_rounded),
+                label: const Text('اختيار مجلد الحالات'),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'اختر مجلد .Statuses الخاص بواتساب، وسيتم حفظ الصلاحية لاستخدامه تلقائيًا لاحقًا.',
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),
