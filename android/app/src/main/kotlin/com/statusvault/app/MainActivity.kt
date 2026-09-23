@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
@@ -38,10 +40,13 @@ class MainActivity : FlutterActivity() {
                 "scanWhatsAppStatus" -> {
                     val type = call.argument<String>("type") ?: "messenger"
                     ioExecutor.execute {
-                        try {
-                            result.success(scanWhatsAppStatus(type))
+                        val items = try {
+                            scanWhatsAppStatus(type)
                         } catch (_: Throwable) {
-                            result.success(emptyList<Map<String, Any>>())
+                            emptyList<Map<String, Any>>()
+                        }
+                        Handler(Looper.getMainLooper()).post {
+                            result.success(items)
                         }
                     }
                 }
