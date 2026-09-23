@@ -16,6 +16,9 @@ class MainActivity : FlutterActivity() {
     private val channelName = "statusvault/storage"
     private var pendingFolderResult: MethodChannel.Result? = null
     private val folderRequestCode = 7011
+    private val whatsappFolderRequestCode = 7012
+    private var pendingWhatsAppResult: MethodChannel.Result? = null
+    private var pendingWhatsAppType = "messenger"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -26,6 +29,10 @@ class MainActivity : FlutterActivity() {
                 "scanWhatsAppStatus" -> {
                     val type = call.argument<String>("type") ?: "messenger"
                     result.success(scanWhatsAppStatus(type))
+                }
+                "pickWhatsAppStatusFolder" -> {
+                    val type = call.argument<String>("type") ?: "messenger"
+                    pickWhatsAppStatusFolder(type, result)
                 }
                 "saveMedia" -> {
                     val path = call.argument<String>("path")
@@ -44,22 +51,64 @@ class MainActivity : FlutterActivity() {
         }, folderRequestCode)
     }
 
+    private fun pickWhatsAppStatusFolder(type: String, result: MethodChannel.Result) {
+        pendingWhatsAppResult = result
+        pendingWhatsAppType = type
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+        }, whatsappFolderRequestCode)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == whatsappFolderRequestCode) {
+            val result = pendingWhatsAppResult ?: return
+            pendingWhatsAppResult = null
+            if (resultCode != Activity.RESULT_OK || data?.data == null) {
+                result.success(false)
+                return
+            }
+            val uri = data.data!!
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                getPreferences(MODE_PRIVATE).edit()
+                    .putString("whatsapp_status_tree_uri_$pendingWhatsAppType", uri.toString())
+                    .apply()
+                result.success(true)
+            } catch (_: Exception) {
+                result.success(false)
+            }
+            return
+        }
+
         if (requestCode != folderRequestCode) return
         val result = pendingFolderResult ?: return
         pendingFolderResult = null
-        if (resultCode != Activity.RESULT_OK || data?.data == null) { result.success(false); return }
+        if (resultCode != Activity.RESULT_OK || data?.data == null) {
+            result.success(false)
+            return
+        }
         val uri = data.data!!
         try {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             getPreferences(MODE_PRIVATE).edit().putString("status_tree_uri", uri.toString()).apply()
             result.success(true)
-        } catch (_: Exception) { result.success(false) }
+        } catch (_: Exception) {
+            result.success(false)
+        }
     }
 
     private fun scanFolder(): List<Map<String, Any>> {
         val raw = getPreferences(MODE_PRIVATE).getString("status_tree_uri", null) ?: return emptyList()
+        val root = DocumentFile.fromTreeUri(this, Uri.parse(raw)) ?: return emptyList()
+        val output = mutableListOf<Map<String, Any>>()
+        scan(root, output)
+        return output
+    }
+
+    private fun scanSavedWhatsAppTree(type: String): List<Map<String, Any>> {
+        val raw = getPreferences(MODE_PRIVATE).getString("whatsapp_status_tree_uri_$type", null) ?: return emptyList()
         val root = DocumentFile.fromTreeUri(this, Uri.parse(raw)) ?: return emptyList()
         val output = mutableListOf<Map<String, Any>>()
         scan(root, output)
@@ -86,6 +135,7 @@ class MainActivity : FlutterActivity() {
                 if (output.isNotEmpty()) break
             }
         }
+        if (output.isEmpty()) output.addAll(scanSavedWhatsAppTree(type))
         return output.sortedByDescending { (it["modified"] as Long) }
     }
 
@@ -143,7 +193,10 @@ class MainActivity : FlutterActivity() {
 
     private fun scan(dir: DocumentFile, output: MutableList<Map<String, Any>>) {
         for (f in dir.listFiles()) {
-            if (f.isDirectory) { scan(f, output); continue }
+            if (f.isDirectory) {
+                scan(f, output)
+                continue
+            }
             val mime = f.type ?: continue
             if (!mime.startsWith("image/") && !mime.startsWith("video/")) continue
             try {
