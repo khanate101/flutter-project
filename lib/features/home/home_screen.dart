@@ -18,7 +18,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int mediaTab = 2;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final source = sourceTab == 0 ? 'messenger' : 'business';
     final data = ref.watch(whatsappStatusProvider(source));
 
@@ -412,7 +412,7 @@ class _EmptyState extends ConsumerWidget {
   final bool isWeb;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final name = sourceTab == 0 ? 'واتساب ماسنجر' : 'واتساب بيزنس';
     return Center(
       child: Padding(
