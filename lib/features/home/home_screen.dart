@@ -35,14 +35,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: Column(
         children: [
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: TabBar(
-              onTap: (index) => setState(() => sourceTab = index),
-              indicatorSize: TabBarIndicatorSize.tab,
-              tabs: const [
-                Tab(icon: WhatsAppStatusIcon(), text: 'واتساب ماسنجر'),
-                Tab(icon: WhatsAppStatusIcon(), text: 'واتساب بيزنس'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _WhatsAppSourceCard(
+                    title: 'واتساب ماسنجر',
+                    subtitle: 'حالات WhatsApp',
+                    icon: Icons.chat_rounded,
+                    selected: sourceTab == 0,
+                    onTap: () => setState(() => sourceTab = 0),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _WhatsAppSourceCard(
+                    title: 'واتساب بيزنس',
+                    subtitle: 'حالات WhatsApp Business',
+                    icon: Icons.business_rounded,
+                    selected: sourceTab == 1,
+                    onTap: () => setState(() => sourceTab = 1),
+                  ),
+                ),
               ],
             ),
           ),
@@ -150,12 +165,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
+class _WhatsAppSourceCard extends StatelessWidget {
+  const _WhatsAppSourceCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const green = Color(0xFF25D366);
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected
+        ? green.withOpacity(0.18)
+        : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.65);
+    final border = selected ? green : Theme.of(context).colorScheme.outlineVariant;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: selected ? 2 : 0,
+      color: bg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: border, width: selected ? 2 : 1),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: const BoxDecoration(
+                  color: green,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.white, size: 23),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle_rounded, color: green, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class WhatsAppStatusIcon extends StatelessWidget {
   const WhatsAppStatusIcon({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    const primary = Color(0xFF25D366);
     return SizedBox(
       width: 32,
       height: 32,
@@ -223,6 +317,13 @@ class StatusCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: const Color(0xFF25D366).withOpacity(0.06),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: const Color(0xFF25D366).withOpacity(0.20),
+        ),
+      ),
       child: InkWell(
         onTap: () => context.push('/viewer', extra: item),
         child: Stack(
@@ -319,7 +420,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.photo_library_outlined, size: 70),
+            const Icon(
+              Icons.photo_library_outlined,
+              size: 70,
+              color: Color(0xFF25D366),
+            ),
             const SizedBox(height: 16),
             const Text(
               'لم يتم العثور على حالات متاحة',
