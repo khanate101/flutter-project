@@ -12,6 +12,12 @@ class NativeStorageService {
     return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<bool> isAllFilesAccessGranted() async =>
+      await _channel.invokeMethod<bool>('isAllFilesAccessGranted') ?? false;
+
+  Future<bool> openAllFilesAccessSettings() async =>
+      await _channel.invokeMethod<bool>('openAllFilesAccessSettings') ?? false;
+
   Future<bool> pickWhatsAppStatusFolder(String type) async =>
       await _channel.invokeMethod<bool>('pickWhatsAppStatusFolder', {'type': type}) ?? false;
 
