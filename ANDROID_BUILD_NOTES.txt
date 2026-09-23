@@ -1,0 +1,15 @@
+StatusVault Android build compatibility
+---------------------------------------
+This project uses:
+- Android Gradle Plugin: 8.11.1
+- Gradle Wrapper: 8.14
+- Java/Kotlin target: 17
+- compileSdk/targetSdk: 35
+
+The Flutter Gradle plugin in the current Flutter SDK requires AGP 8.11.1 or newer.
+Do not downgrade AGP below 8.11.1.
+Run:
+  flutter clean
+  rm -rf android/.gradle build
+  flutter pub get
+  flutter build apk --release
