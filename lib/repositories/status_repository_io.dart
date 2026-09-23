@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../core/services/native_storage_service.dart';
 import '../core/utils/file_utils.dart';
 import '../models/status_item.dart';
@@ -10,6 +11,9 @@ class StatusRepository {
   Future<bool> pickWhatsAppStatusFolder() => nativeStorage.pickStatusFolder();
 
   Future<List<StatusItem>> scanWhatsAppStatus(String type) async {
+    await Permission.storage.request();
+    await Permission.photos.request();
+    await Permission.videos.request();
     final selected = await nativeStorage.scanWhatsAppStatus(type);
     return selected.map((e) {
       final path = e['path'] as String;
