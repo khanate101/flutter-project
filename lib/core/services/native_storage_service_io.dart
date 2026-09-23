@@ -12,6 +12,15 @@ class NativeStorageService {
     return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> scanWhatsAppStatus(String type) async {
+    final raw = await _channel.invokeListMethod<dynamic>(
+          'scanWhatsAppStatus',
+          {'type': type},
+        ) ??
+        [];
+    return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   Future<bool> saveMedia(String path, String title) async =>
       await _channel.invokeMethod<bool>('saveMedia', {'path': path, 'title': title}) ?? false;
 
@@ -24,18 +33,11 @@ class NativeStorageService {
       final stat = await entity.stat();
       final path = entity.path;
       final lower = path.toLowerCase();
-      final isVideo = lower.endsWith('.mp4') ||
-          lower.endsWith('.3gp') ||
-          lower.endsWith('.webm') ||
-          lower.endsWith('.mkv') ||
-          lower.endsWith('.mov');
-      final isImage = lower.endsWith('.jpg') ||
-          lower.endsWith('.jpeg') ||
-          lower.endsWith('.png') ||
-          lower.endsWith('.webp') ||
-          lower.endsWith('.gif') ||
-          lower.endsWith('.heic') ||
-          lower.endsWith('.heif');
+      final isVideo = lower.endsWith('.mp4') || lower.endsWith('.3gp') ||
+          lower.endsWith('.webm') || lower.endsWith('.mkv') || lower.endsWith('.mov');
+      final isImage = lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
+          lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif') ||
+          lower.endsWith('.heic') || lower.endsWith('.heif');
       if (!isVideo && !isImage) continue;
       result.add({
         'path': path,
