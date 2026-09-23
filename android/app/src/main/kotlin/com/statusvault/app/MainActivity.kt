@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.android.FlutterActivity
@@ -11,6 +13,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val channelName = "statusvault/storage"
@@ -19,6 +22,12 @@ class MainActivity : FlutterActivity() {
     private val whatsappFolderRequestCode = 7012
     private var pendingWhatsAppResult: MethodChannel.Result? = null
     private var pendingWhatsAppType = "messenger"
+    private val ioExecutor = Executors.newSingleThreadExecutor()
+
+    override fun onDestroy() {
+        ioExecutor.shutdownNow()
+        super.onDestroy()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -28,7 +37,31 @@ class MainActivity : FlutterActivity() {
                 "scanStatusFolder" -> result.success(scanFolder())
                 "scanWhatsAppStatus" -> {
                     val type = call.argument<String>("type") ?: "messenger"
-                    result.success(scanWhatsAppStatus(type))
+                    ioExecutor.execute {
+                        try {
+                            result.success(scanWhatsAppStatus(type))
+                        } catch (_: Throwable) {
+                            result.success(emptyList<Map<String, Any>>())
+                        }
+                    }
+                }
+                "isAllFilesAccessGranted" -> {
+                    result.success(
+                        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R ||
+                            Environment.isExternalStorageManager()
+                    )
+                }
+                "openAllFilesAccessSettings" -> {
+                    try {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                            startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                data = Uri.parse("package:$packageName")
+                            })
+                        }
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
                 }
                 "pickWhatsAppStatusFolder" -> {
                     val type = call.argument<String>("type") ?: "messenger"
@@ -128,6 +161,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun scanWhatsAppStatus(type: String): List<Map<String, Any>> {
+        // Filesystem access under /Android/media can block; this method is always called on the IO executor.
         val output = mutableListOf<Map<String, Any>>()
         val relativeRoots = if (type == "business") {
             listOf(
