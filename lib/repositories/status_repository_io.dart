@@ -9,6 +9,25 @@ class StatusRepository {
 
   Future<bool> pickWhatsAppStatusFolder() => nativeStorage.pickStatusFolder();
 
+  Future<List<StatusItem>> scanWhatsAppStatus(String type) async {
+    final selected = await nativeStorage.scanWhatsAppStatus(type);
+    return selected.map((e) {
+      final path = e['path'] as String;
+      final mime = e['mime'] as String? ?? '';
+      final modified = (e['modified'] as num?)?.toInt() ?? 0;
+      final size = (e['size'] as num?)?.toInt() ?? File(path).lengthSync();
+      return StatusItem(
+        id: FileUtils.mediaKey(path, size, modified),
+        uri: path,
+        title: e['name'] as String? ?? path.split(Platform.pathSeparator).last,
+        type: mime.startsWith('video/') || e['isVideo'] == true
+            ? StatusType.video
+            : StatusType.image,
+        modified: DateTime.fromMillisecondsSinceEpoch(modified),
+      );
+    }).toList();
+  }
+
   Future<List<StatusItem>> scanAvailableMedia() async {
     final selected = await nativeStorage.scanStatusFolder();
     if (selected.isNotEmpty) {
@@ -26,13 +45,9 @@ class StatusRepository {
         );
       }).toList();
     }
-
     final permission = await PhotoManager.requestPermissionExtend();
     if (!permission.hasAccess) return [];
-    final albums = await PhotoManager.getAssetPathList(
-      type: RequestType.common,
-      onlyAll: true,
-    );
+    final albums = await PhotoManager.getAssetPathList(type: RequestType.common, onlyAll: true);
     if (albums.isEmpty) return [];
     final assets = await albums.first.getAssetListPaged(page: 0, size: 300);
     final result = <StatusItem>[];
