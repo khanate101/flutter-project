@@ -111,8 +111,20 @@ class MainActivity : FlutterActivity() {
         val raw = getPreferences(MODE_PRIVATE).getString("whatsapp_status_tree_uri_$type", null) ?: return emptyList()
         val root = DocumentFile.fromTreeUri(this, Uri.parse(raw)) ?: return emptyList()
         val output = mutableListOf<Map<String, Any>>()
-        scan(root, output)
+        scanWhatsAppTree(root, output)
         return output
+    }
+
+    private fun scanWhatsAppTree(dir: DocumentFile, output: MutableList<Map<String, Any>>) {
+        for (f in dir.listFiles()) {
+            if (f.isDirectory) {
+                if (f.name == ".Statuses") {
+                    scan(f, output)
+                } else {
+                    scanWhatsAppTree(f, output)
+                }
+            }
+        }
     }
 
     private fun scanWhatsAppStatus(type: String): List<Map<String, Any>> {
