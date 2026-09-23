@@ -1,6 +1,10 @@
 class NativeStorageService {
   Future<bool> pickStatusFolder() async => false;
   Future<List<Map<String, dynamic>>> scanStatusFolder() async => const [];
+  Future<bool> isAllFilesAccessGranted() async => true;
+
+  Future<bool> openAllFilesAccessSettings() async => false;
+
   Future<bool> pickWhatsAppStatusFolder(String type) async => false;
 
   Future<List<Map<String, dynamic>>> scanWhatsAppStatus(String type) async => const [];
