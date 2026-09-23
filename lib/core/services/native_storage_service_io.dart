@@ -12,6 +12,9 @@ class NativeStorageService {
     return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<bool> pickWhatsAppStatusFolder(String type) async =>
+      await _channel.invokeMethod<bool>('pickWhatsAppStatusFolder', {'type': type}) ?? false;
+
   Future<List<Map<String, dynamic>>> scanWhatsAppStatus(String type) async {
     final raw = await _channel.invokeListMethod<dynamic>(
           'scanWhatsAppStatus',
