@@ -440,6 +440,21 @@ class _EmptyState extends ConsumerWidget {
             ),
             if (!isWeb) ...[
               const SizedBox(height: 18),
+              FutureBuilder<bool>(
+                future: ref.read(statusRepositoryProvider).isAllFilesAccessGranted(),
+                builder: (context, snapshot) {
+                  if (snapshot.data == true) return const SizedBox.shrink();
+                  return FilledButton.icon(
+                    onPressed: () async {
+                      await ref.read(statusRepositoryProvider).openAllFilesAccessSettings();
+                    },
+                    icon: const Icon(Icons.folder_special_rounded),
+                    label: const Text('تفعيل الوصول المباشر لمجلد واتساب'),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 18),
               FilledButton.icon(
                 onPressed: () async {
                   final type = sourceTab == 0 ? 'messenger' : 'business';
